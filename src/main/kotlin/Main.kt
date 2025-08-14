@@ -16,40 +16,44 @@ data class Chat(
     val messages: MutableList<Message> = mutableListOf(),
     var isDeleted: Boolean = false
 ) {
-    fun getLastMessageText(): String {
-        return messages
+    fun getLastMessageText(): String =
+        messages
             .filterNot { it.isDeleted }
             .lastOrNull()
             ?.text ?: "нет сообщений"
-    }
 
-    fun hasParticipants(user1: String, user2: String): Boolean {
-        return (userId1 == user1 && userId2 == user2) ||
+
+    fun hasParticipants(user1: String, user2: String): Boolean =
+         (userId1 == user1 && userId2 == user2) ||
                 (userId1 == user2 && userId2 == user1)
-    }
+
 }
 
 object ChatStorage {
     private val chats = mutableListOf<Chat>()
 
-    fun findOrCreateChat(user1: String, user2: String): Chat {
-        return chats.firstOrNull { it.hasParticipants(user1, user2) }
+    fun findOrCreateChat(user1: String, user2: String): Chat =
+         chats.asSequence()
+             .firstOrNull { it.hasParticipants(user1, user2) }
             ?: Chat(userId1 = user1, userId2 = user2).also { chats.add(it) }
-    }
 
-    fun findChat(user1: String, user2: String): Chat? {
-        return chats.firstOrNull { it.hasParticipants(user1, user2) }
-    }
 
-    fun getChatsForUser(userId: String): List<Chat> {
-        return chats.filter {
+    fun findChat(user1: String, user2: String): Chat? =
+        chats.asSequence()
+            .firstOrNull { it.hasParticipants(user1, user2) }
+
+
+    fun getChatsForUser(userId: String): List<Chat> =
+         chats.asSequence()
+             .filter {
             !it.isDeleted && (it.userId1 == userId || it.userId2 == userId)
         }
-    }
+             .toList()
 
-    fun clear() {
+
+    fun clear() =
         chats.clear()
-    }
+
 }
 class MessageService(private val currentUserId: String) {
 
@@ -60,14 +64,14 @@ class MessageService(private val currentUserId: String) {
     }
 
     // Получение списка чатов пользователя
-    fun getChats(): List<Chat> {
-        return ChatStorage.getChatsForUser(currentUserId)
-    }
+    fun getChats(): List<Chat> =
+        ChatStorage.getChatsForUser(currentUserId)
+
 
     // Получение последних сообщений из всех чатов
-    fun getLastMessages(): List<String> {
-        return getChats().map { it.getLastMessageText() }
-    }
+    fun getLastMessages(): List<String> =
+        getChats().map { it.getLastMessageText() }
+
 
     // Получение сообщений из чата с пометкой прочитанными
     fun getMessages(recipientId: String, count: Int, strict: Boolean = false): List<Message> {
@@ -78,8 +82,10 @@ class MessageService(private val currentUserId: String) {
                 return emptyList()
             }
 
-        return chat.messages
+        return chat.messages //optimized
+            .asSequence()
             .filterNot { it.isDeleted }
+            .toList()
             .takeLast(count)
             .onEach { if (it.senderId != currentUserId) it.isRead = true }
     }
@@ -93,7 +99,8 @@ class MessageService(private val currentUserId: String) {
 
     // Удаление сообщения
     fun deleteMessage(messageId: String) {
-        getChats().forEach { chat ->
+        getChats().asSequence()
+            .forEach { chat ->
             chat.messages.firstOrNull { it.id == messageId }?.isDeleted = true
         }
     }
@@ -104,16 +111,17 @@ class MessageService(private val currentUserId: String) {
     }
 
     // Получение количества непрочитанных чатов
-    fun getUnreadChatsCount(): Int {
-        return getChats().count { chat ->
+    fun getUnreadChatsCount(): Int =
+        getChats().asSequence()
+            .count { chat ->
             chat.messages.any { message ->
                 !message.isDeleted &&
                         !message.isRead &&
                         message.senderId != currentUserId
             }
         }
-    }
-}
+
+} //можно ли в какие функции добавить .asSequence?
 
 // Пример использования
 fun main() {
