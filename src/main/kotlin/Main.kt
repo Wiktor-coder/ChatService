@@ -121,7 +121,7 @@ class MessageService(private val currentUserId: String) {
             }
         }
 
-} //можно ли в какие функции добавить .asSequence?
+} 
 
 // Пример использования
 fun main() {
